@@ -13,29 +13,30 @@ let toolTipDiv = d3.select("body").append("div")//toolTip div definition, defini
             .style("background-color", "black")
             .style("font-size", "12px")
             .style("border-radius", "3px")
-            .style("text-align", "center")
+            .style("text-align", "left")
             .style("visibility", "hidden");
 
 let chart = d3.select(".chart")//main chart definition
     .attr("width", width + margin.left + margin.right)//margins added for axis
     .attr("height", height + margin.top + margin.bottom)
-    .call(d3.zoom().on("zoom", zoomed))
+    .call(d3.zoom().on("zoom", zoomed))//must call zoom here before appending "g"
     .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-let radius = d3.scaleSqrt()
+let radius = d3.scaleSqrt()//log scale not working as well as this scale
     .domain([0, 1e6])
-    .range([0, 15]);
+    .range([0, 25]);
 
 
 d3.json(url,function(error,meteorData){//use d3's own json capabilites to get data
     if (error) throw error;
+    //format data to [[long,lat],mass,description] before sending
     let transposedMeteorData = meteorData.features.map(function(d,i){
       let tArr =[]
       let latLongArr = []
       let descArr =[]
       let descObj ={}
-      if(!d.geometry){//no geometry means no lat/long
+      if(!d.geometry){//no geometry means no lat/long to be removed
         tArr.push(null)
         return tArr;
       }
@@ -57,15 +58,17 @@ d3.json(url,function(error,meteorData){//use d3's own json capabilites to get da
       tArr.push(descObj)
       return tArr;
     })
+    //remove nulls(no long/lat values)
     transposedMeteorData = transposedMeteorData.filter(function(d){if(d[0]){return d}})
+    //sort from large to small
     transposedMeteorData.sort(function(a,b){return b[1] - a[1];});
-
+    //create map
     insertGlobalMap(transposedMeteorData)
 
 })
 
 function insertGlobalMap(mData){
-  console.log(mData)
+  //standard d3 functions to implement global map
   let projection = d3.geoMercator()
     .scale(width / 2 / Math.PI)
     .translate([width / 2, height / 1.5])
@@ -73,27 +76,27 @@ function insertGlobalMap(mData){
   let path = d3.geoPath()
     .projection(projection);
 
-
-
+  //not world mapdata defined in geoJson.js, data pulled from https://geojson-maps.ash.ms/
   let globe = chart.append("path")
       .attr("d", path(worldMapData))
       .attr("fill","white")
-  let fakeData = [[ -77.03637,38.89511],[38.763611,9.005401],[-4.024429,5.345317]]
 
+  //plot meteorites
   let pointPlots = chart.selectAll("g")
       .data(mData)
       .enter().append("circle")
       .attr("cx",function(d){return projection(d[0])[0]})
       .attr("cy",function(d){return projection(d[0])[1]})
       .attr("r",function(d){
-        if(!d[1]){return 1}
+        if(!d[1]){return 1}//if mass = null from data
         else {return radius(d[1])}
       })
       .attr("fill",getRandomColor)
       .style("opacity",".5")
       .on("mouseover", function(d) {//tool tip functionality
-         toolTipDiv.html("<strong>"+d[2].name +" : " + d[2].year +"</strong><br/>"
-                          + " mass: " + d[2].mass)
+         toolTipDiv.html("<strong>"+d[2].name +" : " + d[2].year +"<br/>"
+                          + "Mass: " + d[2].mass+"<br/>"
+                        +"recclass: " +d[2].recclass)
            .style("left", (d3.event.pageX) + "px")
            .style("top", (d3.event.pageY+10) + "px")
            .style("visibility", "visible");
@@ -103,8 +106,7 @@ function insertGlobalMap(mData){
          });
 }
 
-function zoomed(){
-  console.log(d3.event.scale)
+function zoomed(){//runs when zooming d3 event ocurs , need to adjust for outter bounds
   chart.attr("transform", d3.event.transform)
 }
 
