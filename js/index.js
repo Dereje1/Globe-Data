@@ -58,8 +58,8 @@ d3.json(url,function(error,meteorData){//use d3's own json capabilites to get da
       tArr.push(descObj)
       return tArr;
     })
-    //remove nulls(no long/lat values)
-    transposedMeteorData = transposedMeteorData.filter(function(d){if(d[0]){return d}})
+    //remove nulls(no long/lat values) & null mass data points
+    transposedMeteorData = transposedMeteorData.filter(function(d){if(d[0] && d[1]){return d}})
     //sort from large to small
     transposedMeteorData.sort(function(a,b){return b[1] - a[1];});
     //create map
@@ -87,10 +87,7 @@ function insertGlobalMap(mData){
       .enter().append("circle")
       .attr("cx",function(d){return projection(d[0])[0]})
       .attr("cy",function(d){return projection(d[0])[1]})
-      .attr("r",function(d){
-        if(!d[1]){return 1}//if mass = null from data
-        else {return radius(d[1])}
-      })
+      .attr("r",function(d){return radius(d[1])})
       .attr("fill",getRandomColor)
       .style("opacity",".5")
       .on("mouseover", function(d) {//tool tip functionality
